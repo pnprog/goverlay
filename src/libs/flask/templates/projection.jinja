@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+    <body id="body">
+        <style>
+            html, body, svg {
+                padding:0;
+                margin:0;
+                background-color: black;
+            }
+            
+            #grid {
+                
+                background-color: black;
+                position: absolute;
+                left: 1%;
+                top: 1%;
+                width: 98%;
+                height: 98%;
+                
+            }
+
+            .draggable {
+                cursor: move;
+            }
+        </style>
+        <svg id="grid"
+             xmlns="http://www.w3.org/2000/svg"
+             onload="makeDraggable(evt)"
+             viewBox="0 0 100 100">
+        </svg>
+        <script type="text/javascript">
+            var dots = null;
+            var radius = null;
+            var dim = null;
+
+            function update_data() {
+                log("getting list of dots")
+                url="{{ url_for('get_projection_grid') }}"
+                fetch(url, {
+                    method: "GET",
+                })
+                .then((response) => response.json())
+                .then((json) => {
+                    dots = json.dots;
+                    radius = json.radius;
+                    dim = json.dim;
+                    draw_grid();
+                });
+            }
+            
+            function draw_grid() {
+                log("redrawing the grid")
+                document.getElementById("grid").innerHTML = '';
+                
+                // goban dots
+                for (const [id, data] of Object.entries(dots)) {
+                    if (data['stroke'] != "black") {
+                        document.getElementById("grid").innerHTML += `
+                            <ellipse
+                                id="${id}"
+                                cx=${data['cx']}
+                                cy=${data['cy']}
+                                stroke=${data['stroke']}
+                                rx=${radius}
+                                ry=${radius}
+                                stroke-width=${radius/4}
+                                fill=${data['stroke']}
+                            />`;
+                    }
+                }
+            }
+            
+            update_data();
+
+            document.addEventListener('keydown', evt => {
+                if (evt.key === 'Escape') {
+                    fullscreen()
+                }
+            });
+
+            function fullscreen() {
+                url="{{ url_for('toggle_fullscreen') }}"
+                fetch(url, {
+                    method: "GET",
+                })
+            }
+            
+            function log(text) {
+                url="{{ url_for('log') }}"
+                fetch(url, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        "text": text,
+                    }),
+                    headers: {
+                        "Content-type": "application/json; charset=UTF-8"
+                    }
+                })
+                console.log(text)
+            }
+
+        </script>
+    </body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Goverlay</title>
+        <link href="/static/bootstrap.min.css"
+              rel="stylesheet"
+              integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+              crossorigin="anonymous">
+        <link rel="icon"
+              type="image/x-icon"
+              href="{{ url_for('static', filename='favicon.ico') }}">
+    </head>
+    <body>
+        <nav id="top_navbar"
+             class="navbar navbar-dark navbar-expand-lg"
+             style="background-color: black">
+            <div class="container">
+                <span class="navbar-brand">Goverlay</span>
+                <a class="navbar-nav nav-link text-white" href="{{ url_for("pannel") }}">Projector</a>
+                <a class="navbar-nav nav-link" href="{{ url_for("game") }}">Game</a>
+                <button class="btn btn-danger" onClick="terminate()">Exit</button>
+            </div>
+        </nav>
+        <div id="main_container" class="container mt-3">
+            <h1>Projector</h1>
+            <div class="form-group my-1">
+                <label for="exampleFormControlSelect1">Goban size</label>
+                <select class="form-control" id="goban_size">
+                    <option>19</option>
+                    <option>13</option>
+                    <option>9</option>
+                </select>
+            </div>
+            <button class="btn btn-primary my-1" onClick="show_projection_calibration()">Create goban</button>
+            <br>
+            <button class="btn btn-primary my-1" onClick="fullscreen()">Fullscreen</button>
+            <br>
+            <script>
+                function fullscreen() {
+                    url="{{ url_for('toggle_fullscreen') }}"
+                    fetch(url, {
+                        method: "GET",
+                    })
+                }
+
+                function show_projection_calibration() {
+                    url="{{ url_for('show_projection_calibration') }}"
+                    fetch(url, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            "dim": parseInt(document.getElementById("goban_size").value),
+                        }),
+                        headers: {
+                            "Content-type": "application/json; charset=UTF-8"
+                        }
+                    })
+                    .then((response) => response.json())
+                    .then((json) => {});
+
+                }
+
+                function terminate() {
+                    console.log("closing...")
+                    url="{{ url_for('close') }}"
+                    fetch(url, {
+                        method: "GET",
+                    })
+                }
+
+            </script>
+        </div>
+        <script src="/static/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous">
+        </script>
+    </body>
+</html>

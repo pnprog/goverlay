@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+    <body id="body">
+        <style>
+            html, body, svg {
+                padding:0;
+                margin:0;
+            }
+            
+            #grid {
+                
+                background-color: black;
+                position: absolute;
+                left: 1%;
+                top: 1%;
+                width: 98%;
+                height: 98%;
+                
+            }
+
+            .draggable {
+                cursor: move;
+            }
+        </style>
+        <svg id="grid"
+             xmlns="http://www.w3.org/2000/svg"
+             onload="makeDraggable(evt)"
+             viewBox="0 0 100 100">
+        </svg>
+        <script type="text/javascript">
+            var dots = null;
+            var radius = null;
+            var dim = null;
+            //var goban_borders = null;
+
+            function update_data() {
+                url="{{ url_for('get_projection_grid') }}"
+                fetch(url, {
+                    method: "GET",
+                })
+                .then((response) => response.json())
+                .then((json) => {
+                    dots = json.dots;
+                    radius = json.radius;
+                    dim = json.dim;
+                    draw_grid();
+                });
+            }
+            
+            function draw_grid() {
+                log("redrawing the grid")
+                document.getElementById("grid").innerHTML = '';
+                
+                // goban borders
+                borders_color = "white";
+                for (let [id1, id2] of [
+                    ["c-0-0","c-0-"+(dim-1)],
+                    ["c-0-0","c-"+(dim-1)+"-0"],
+                    ["c-0-"+(dim-1),"c-"+(dim-1)+"-"+(dim-1)],
+                    ["c-"+(dim-1)+"-0","c-"+(dim-1)+"-"+(dim-1)]
+                    ]) {
+                    
+                    p1 = dots[id1];
+                    p2 = dots[id2];
+                    
+                    document.getElementById("grid").innerHTML += `
+                        <line
+                            x1=${p1["cx"]}
+                            y1=${p1["cy"]}
+                            x2=${p2["cx"]}
+                            y2=${p2["cy"]}
+                            stroke="${borders_color}"
+                            stroke-width=${radius/4}
+                    />`;
+                }
+
+                // goban dots
+                for (const [id, data] of Object.entries(dots)) {
+                        document.getElementById("grid").innerHTML += `
+                            <ellipse
+                                id="${id}"
+                                cx=${data['cx']}
+                                cy=${data['cy']}
+                                stroke=${data['stroke']}
+                                rx=${radius}
+                                ry=${radius}
+                                stroke-width=${radius/4}
+                                fill=${data['stroke']}
+                                class="draggable"
+                            />`;
+                }
+            }
+            
+            function makeDraggable(evt) {
+                var svg = evt.target;
+                svg.addEventListener('mousedown', startDrag);
+                svg.addEventListener('mousemove', drag);
+                svg.addEventListener('mouseup', endDrag);
+
+                function getMousePosition(evt) {
+                    var CTM = svg.getScreenCTM();
+                    return {
+                        x: (evt.clientX - CTM.e) / CTM.a,
+                        y: (evt.clientY - CTM.f) / CTM.d
+                    };
+                }
+
+                var selectedElement, offset;
+
+                function startDrag(evt) {
+                    if (evt.target.classList.contains('draggable')) {
+                        selectedElement = evt.target;
+                        offset = getMousePosition(evt);
+                        offset.x -= parseFloat(selectedElement.getAttributeNS(null, "cx"));
+                        offset.y -= parseFloat(selectedElement.getAttributeNS(null, "cy"));
+                    }
+                }
+
+                function drag(evt) {
+                    if (selectedElement) {
+                        var coord = getMousePosition(evt);
+                        selectedElement.setAttributeNS(null, "cx", coord.x-offset.x);
+                        selectedElement.setAttributeNS(null, "cy", coord.y-offset.y);
+                    }
+                }
+
+                function endDrag(evt) {
+                    if (selectedElement) {
+                        var coord = getMousePosition(evt);
+                        url="{{ url_for('move_projection_grid') }}"
+                        fetch(url, {
+                            method: "POST",
+                            body: JSON.stringify({
+                                "id": selectedElement.id,
+                                "cx": coord.x-offset.x,
+                                "cy": coord.y-offset.y,
+                            }),
+                            headers: {
+                                "Content-type": "application/json; charset=UTF-8"
+                            }
+                        })
+                        .then((response) => response.json())
+                        .then((json) => {
+                            selectedElement = null;
+                            dots = json.dots;
+                            radius = json.radius;
+                            dim = json.dim;
+                            draw_grid();
+                        });
+                    }
+                }
+            }
+            
+            update_data();
+
+            document.addEventListener('keydown', evt => {
+                if (evt.key === 'Escape') {
+                    fullscreen()
+                }
+            });
+
+            function fullscreen() {
+                url="{{ url_for('toggle_fullscreen') }}"
+                fetch(url, {
+                    method: "GET",
+                })
+            }
+            
+            function log(text) {
+                url="{{ url_for('log') }}"
+                fetch(url, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        "text": text,
+                    }),
+                    headers: {
+                        "Content-type": "application/json; charset=UTF-8"
+                    }
+                })
+                console.log(text)
+            }
+        </script>
+    </body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Goverlay</title>
+        <link href="/static/bootstrap.min.css"
+              rel="stylesheet"
+              integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+              crossorigin="anonymous">
+        <link rel="icon"
+              type="image/x-icon"
+              href="{{ url_for('static', filename='favicon.ico') }}">
+    </head>
+    <body>
+        <nav id="top_navbar"
+             class="navbar navbar-dark navbar-expand-lg"
+             style="background-color: black">
+            <div class="container">
+                <span class="navbar-brand">Goverlay</span>
+                <a class="navbar-nav nav-link" href="{{ url_for("pannel") }}">Projector</a>
+                <a class="navbar-nav nav-link text-white" href="{{ url_for("game") }}">Game</a>
+                <button class="btn btn-danger" onClick="terminate()">Exit</button>
+            </div>
+        </nav>
+        <div id="main_container" class="container mt-3">
+            {% if not moves %}
+                <h1>Open SGF</h1>
+                <form class="row g-3 needs-validation"
+                      novalidate
+                      method="post"
+                      enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="formFile" class="form-label">Select SGF file</label>
+                        <input class="form-control" type="file" name="sgf_file" accept=".sgf">
+                    </div>
+                    <button class="btn btn-primary my-1" type="submit">Select</button>
+                    <br>
+                </form>
+            {% else %}
+                <button class="btn btn-primary my-1" onclick="playprev();">⏴</button>
+                <button class="btn btn-primary my-1" onclick="playnext();">⏵</button>
+                <span id="move_description"></span>
+                <script>
+                highlight([])
+
+                moves = {{ moves }};
+                position = 0;
+
+                function playnext() {
+                    if (position < 0) position = 0;
+                    next_move = moves[position];
+                    player = next_move[0]
+                    move = next_move[1]
+                    coordinates = next_move[2]
+                    document.getElementById("move_description").innerHTML = `${player} at ${move}`
+                    position += 1;
+
+                    highlight([coordinates])
+
+                    
+                }
+
+                function playprev() { 
+                    position -= 2;
+                    playnext()
+                }
+
+                function highlight(moves) {
+                    url="{{ url_for('projection_grid_highlight') }}"
+                    fetch(url, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            "coordinates": moves,
+                        }),
+                        headers: {
+                            "Content-type": "application/json; charset=UTF-8"
+                        }
+                    })
+                }
+
+                document.addEventListener('keydown', evt => {
+                    if (evt.keyCode == '37') {
+                        playprev()
+                    }
+                    else if (evt.keyCode == '39') {
+                        playnext()
+                    }
+                });
+
+                function log(text) {
+                    url="{{ url_for('log') }}"
+                    fetch(url, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            "text": text,
+                        }),
+                        headers: {
+                            "Content-type": "application/json; charset=UTF-8"
+                        }
+                    })
+                    console.log(text)
+                }
+
+                </script>
+            {% endif %}
+        </div>
+        <script>
+            function terminate() {
+                console.log("closing...")
+                url="{{ url_for('close') }}"
+                fetch(url, {
+                    method: "GET",
+                })
+            }
+        </script>
+        <script src="/static/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous">
+        </script>
+    </body>
+</html>
