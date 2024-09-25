@@ -8,14 +8,12 @@
             }
             
             #grid {
-                
                 background-color: black;
                 position: absolute;
                 left: 1%;
                 top: 1%;
                 width: 98%;
                 height: 98%;
-                
             }
 
             .draggable {
@@ -31,7 +29,6 @@
             var dots = null;
             var radius = null;
             var dim = null;
-            //var goban_borders = null;
 
             function update_data() {
                 url="{{ url_for('get_projection_grid') }}"
@@ -47,10 +44,60 @@
                 });
             }
             
+            function draw_stone(id, center, box, stroke) {
+                // https://stackoverflow.com/questions/1734745/how-to-create-circle-with-b%C3%A9zier-curves
+                ratio = 0.552284749831;
+                //ratio = 2/3;
+                //ratio = 1;
+
+                n = box["n"];
+                ne = box["ne"];
+                e = box["e"];
+                se = box["se"];
+                s = box["s"];
+                sw = box["sw"];
+                w = box["w"];
+                nw = box["nw"];
+
+                let element = document.createElementNS('http://www.w3.org/2000/svg','path');
+                element.setAttribute('id',id);
+                element.setAttribute('class','draggable');
+                element.setAttribute('fill',stroke);
+                element.setAttribute('stroke',stroke);
+                element.setAttribute('stroke-width',"1px");
+                element.setAttribute('vector-effect', 'non-scaling-stroke');
+
+                // https://medium.com/@bragg/cubic-bezier-curves-with-svg-paths-a326bb09616f
+                d = `M\n${center[0]},${center[1]}`;
+                d += `\nL\n${w[0]},${w[1]}`;
+
+                h = [(sw[0]-w[0])*ratio, (sw[1]-w[1])*ratio];
+                d += `\nC\n${w[0]+h[0]},${w[1]+h[1]}`;
+
+                h = [(sw[0]-s[0])*ratio, (sw[1]-s[1])*ratio];
+                d += `\n${s[0]+h[0]},${s[1]+h[1]}`;
+                d += `\n${s[0]},${s[1]}`;
+
+                h = [(se[0]-e[0])*ratio, (se[1]-e[1])*ratio];
+                d += `\nS\n${e[0]+h[0]},${e[1]+h[1]}`;
+                d += `\n${e[0]},${e[1]}`;
+
+                h = [(ne[0]-n[0])*ratio, (ne[1]-n[1])*ratio];
+                d += `\nS\n${n[0]+h[0]},${n[1]+h[1]}`;
+                d += `\n${n[0]},${n[1]}`;
+
+                h = [(nw[0]-w[0])*ratio, (nw[1]-w[1])*ratio];
+                d += `\nS\n${w[0]+h[0]},${w[1]+h[1]}`;
+                d += `\n${w[0]},${w[1]}`;
+                
+                element.setAttribute('d',d);
+                document.getElementById('grid').appendChild(element);
+            }
+
             function draw_grid() {
                 log("redrawing the grid")
                 document.getElementById("grid").innerHTML = '';
-                
+
                 // goban borders
                 borders_color = "white";
                 for (let [id1, id2] of [
@@ -63,31 +110,19 @@
                     p1 = dots[id1];
                     p2 = dots[id2];
                     
-                    document.getElementById("grid").innerHTML += `
-                        <line
-                            x1=${p1["cx"]}
-                            y1=${p1["cy"]}
-                            x2=${p2["cx"]}
-                            y2=${p2["cy"]}
-                            stroke="${borders_color}"
-                            stroke-width=${radius/4}
-                    />`;
+                    let element = document.createElementNS('http://www.w3.org/2000/svg','line');
+                    element.setAttribute('x1',p1["cx"]);
+                    element.setAttribute('y1',p1["cy"]);
+                    element.setAttribute('x2',p2["cx"]);
+                    element.setAttribute('y2',p2["cy"]);
+                    element.setAttribute('stroke',borders_color);
+                    element.setAttribute('stroke-width',radius/4);
+                    document.getElementById('grid').appendChild(element);
                 }
 
                 // goban dots
                 for (const [id, data] of Object.entries(dots)) {
-                        document.getElementById("grid").innerHTML += `
-                            <ellipse
-                                id="${id}"
-                                cx=${data['cx']}
-                                cy=${data['cy']}
-                                stroke=${data['stroke']}
-                                rx=${radius}
-                                ry=${radius}
-                                stroke-width=${radius/4}
-                                fill=${data['stroke']}
-                                class="draggable"
-                            />`;
+                    draw_stone(id, [data['cx'], data['cy']], data['box'], data['stroke'])
                 }
             }
             
@@ -105,35 +140,50 @@
                     };
                 }
 
-                var selectedElement, offset;
-
+                var selectedElement, center_cursor_offset;
+                var original_d, starting_position;
                 function startDrag(evt) {
                     if (evt.target.classList.contains('draggable')) {
                         selectedElement = evt.target;
-                        offset = getMousePosition(evt);
-                        offset.x -= parseFloat(selectedElement.getAttributeNS(null, "cx"));
-                        offset.y -= parseFloat(selectedElement.getAttributeNS(null, "cy"));
+                        original_d = selectedElement.getAttributeNS(null, "d");
+                        starting_position = getMousePosition(evt);
                     }
                 }
 
                 function drag(evt) {
                     if (selectedElement) {
-                        var coord = getMousePosition(evt);
-                        selectedElement.setAttributeNS(null, "cx", coord.x-offset.x);
-                        selectedElement.setAttributeNS(null, "cy", coord.y-offset.y);
+                        var cursor = getMousePosition(evt);
+                        new_d = [];
+                        for (segment of original_d.split("\n")) {
+                            if (segment.includes(",")) {
+                                xy = segment.split(",")
+                                x = parseFloat(xy[0]);
+                                y = parseFloat(xy[1]);
+                                new_x = x + (cursor.x-starting_position.x)
+                                new_y = y + (cursor.y-starting_position.y)
+                                new_d.push(`${new_x},${new_y}`)
+                            } else {
+                                new_d.push(segment);
+                            }
+                        }
+                        new_d = new_d.join("\n")
+                        console.log(new_d)
+                        selectedElement.setAttributeNS(null, "d", new_d);
                     }
                 }
 
                 function endDrag(evt) {
                     if (selectedElement) {
-                        var coord = getMousePosition(evt);
+                        center = selectedElement.getAttributeNS(null, "d").split("\n")[1].split(",");
+                        cx = parseFloat(center[0]);
+                        cy = parseFloat(center[1]);
                         url="{{ url_for('move_projection_grid') }}"
                         fetch(url, {
                             method: "POST",
                             body: JSON.stringify({
                                 "id": selectedElement.id,
-                                "cx": coord.x-offset.x,
-                                "cy": coord.y-offset.y,
+                                "cx": cx,
+                                "cy": cy,
                             }),
                             headers: {
                                 "Content-type": "application/json; charset=UTF-8"

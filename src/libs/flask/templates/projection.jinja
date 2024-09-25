@@ -9,14 +9,12 @@
             }
             
             #grid {
-                
                 background-color: black;
                 position: absolute;
                 left: 1%;
                 top: 1%;
                 width: 98%;
                 height: 98%;
-                
             }
 
             .draggable {
@@ -48,6 +46,55 @@
                 });
             }
             
+            function draw_stone(id, box, stroke) {
+                // https://stackoverflow.com/questions/1734745/how-to-create-circle-with-b%C3%A9zier-curves
+                ratio = 0.552284749831;
+                //ratio = 2/3;
+                //ratio = 1;
+
+                n = box["n"];
+                ne = box["ne"];
+                e = box["e"];
+                se = box["se"];
+                s = box["s"];
+                sw = box["sw"];
+                w = box["w"];
+                nw = box["nw"];
+
+                let element = document.createElementNS('http://www.w3.org/2000/svg','path');
+                element.setAttribute('id',id);
+                element.setAttribute('class','draggable');
+                element.setAttribute('fill',stroke);
+                element.setAttribute('stroke',stroke);
+                element.setAttribute('stroke-width',"1px");
+                element.setAttribute('vector-effect', 'non-scaling-stroke');
+
+                // https://medium.com/@bragg/cubic-bezier-curves-with-svg-paths-a326bb09616f
+                d = `M\n${w[0]},${w[1]}`;
+
+                h = [(sw[0]-w[0])*ratio, (sw[1]-w[1])*ratio];
+                d += `\nC\n${w[0]+h[0]},${w[1]+h[1]}`;
+
+                h = [(sw[0]-s[0])*ratio, (sw[1]-s[1])*ratio];
+                d += `\n${s[0]+h[0]},${s[1]+h[1]}`;
+                d += `\n${s[0]},${s[1]}`;
+
+                h = [(se[0]-e[0])*ratio, (se[1]-e[1])*ratio];
+                d += `\nS\n${e[0]+h[0]},${e[1]+h[1]}`;
+                d += `\n${e[0]},${e[1]}`;
+
+                h = [(ne[0]-n[0])*ratio, (ne[1]-n[1])*ratio];
+                d += `\nS\n${n[0]+h[0]},${n[1]+h[1]}`;
+                d += `\n${n[0]},${n[1]}`;
+
+                h = [(nw[0]-w[0])*ratio, (nw[1]-w[1])*ratio];
+                d += `\nS\n${w[0]+h[0]},${w[1]+h[1]}`;
+                d += `\n${w[0]},${w[1]}`;
+                
+                element.setAttribute('d',d);
+                document.getElementById('grid').appendChild(element);
+            }
+
             function draw_grid() {
                 log("redrawing the grid")
                 document.getElementById("grid").innerHTML = '';
@@ -55,17 +102,7 @@
                 // goban dots
                 for (const [id, data] of Object.entries(dots)) {
                     if (data['stroke'] != "black") {
-                        document.getElementById("grid").innerHTML += `
-                            <ellipse
-                                id="${id}"
-                                cx=${data['cx']}
-                                cy=${data['cy']}
-                                stroke=${data['stroke']}
-                                rx=${radius}
-                                ry=${radius}
-                                stroke-width=${radius/4}
-                                fill=${data['stroke']}
-                            />`;
+                        draw_stone(id, data['box'], data['stroke'])
                     }
                 }
             }

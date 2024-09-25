@@ -28,7 +28,8 @@ class Goverlay:
     def start(self):
         self.running = True
         threading.Thread(target=self.start_server, daemon=True).start()
-        wv.start()
+        wv.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
+        wv.start(debug=True)
 
     def destroy_projection(self):
         if self.running:

@@ -141,12 +141,48 @@ class Grid:
                 i, j = ij
                 id = f"c-{i}-{j}"
                 dot = {"i": i, "j": j, "cx": cx, "cy": cy, "stroke": "green"}
+
                 grid[(i, j)] = dot
                 all_dots[id] = dot
 
             if not missing:
                 break
 
+        for dot in all_dots.values():
+            i = dot["i"]
+            j = dot["j"]
+            cx = dot["cx"]
+            cy = dot["cy"]
+
+            box = {}
+
+            distances = []
+            for i2, j2 in [
+                [i, j - 1],
+                [i + 1, j],
+                [i, j + 1],
+                [i - 1, j],
+            ]:
+                key = f"c-{i2}-{j2}"
+                if key in all_dots:
+                    cx2 = all_dots[key]["cx"]
+                    cy2 = all_dots[key]["cy"]
+                    distances.append(sqrt(pow(cx - cx2, 2) + pow(cy - cy2, 2)))
+            radius = sum(distances) / len(distances)
+            for label, i2, j2 in [
+                ["n", 0, -1],
+                ["ne", 1, -1],
+                ["e", 1, 0],
+                ["se", 1, 1],
+                ["s", 0, 1],
+                ["sw", -1, 1],
+                ["w", -1, 0],
+                ["nw", -1, -1],
+            ]:
+                cx2 = cx + i2 * radius
+                cy2 = cy + j2 * radius
+                box[label] = [(cx + cx2) / 2, (cy + cy2) / 2]
+            dot["box"] = box
         return all_dots
 
     def apply_optical_distortion(self):
@@ -182,6 +218,37 @@ class Grid:
                     cy = float(cy)
                     dot = {"i": i, "j": j, "cx": cx, "cy": cy, "stroke": "green"}
                     all_dots[id] = dot
+
+        for dot in all_dots.values():
+            i = dot["i"]
+            j = dot["j"]
+            cx = dot["cx"]
+            cy = dot["cy"]
+
+            box = {}
+            for label, i2, j2 in [
+                ["n", i, j - 1],
+                ["ne", i + 1, j - 1],
+                ["e", i + 1, j],
+                ["se", i + 1, j + 1],
+                ["s", i, j + 1],
+                ["sw", i - 1, j + 1],
+                ["w", i - 1, j],
+                ["nw", i - 1, j - 1],
+            ]:
+                cx2, cy2 = cv2.projectPoints(
+                    np.array([np.array([i2, j2, 0], np.float32)]),
+                    rvecs[0],
+                    tvecs[0],
+                    mtx,
+                    dist,
+                )[0][0][0]
+                cx = float(cx)
+                cy = float(cy)
+
+                box[label] = [(cx + cx2) / 2, (cy + cy2) / 2]
+            dot["box"] = box
+
         return all_dots
 
     def recalculate_dots(self):
